@@ -87,6 +87,7 @@ bash x-ui-latest.sh -uninstall y
 | `-install y` | Install |
 | `-subdomain <domain>` | Panel and subscription domain |
 | `-reality_domain <domain>` | REALITY destination domain |
+| `-ssh_port <port>` | SSH port to allow in UFW; by default the script detects it and asks for confirmation |
 | `-version <version>` | Install specific 3x-ui version (e.g. `3.4.2`), default — latest |
 | `-uninstall y` | Full uninstall |
 

@@ -125,11 +125,13 @@ diag_token=$(gen_random_string 16)
 mtr_backend_port=$(make_port)
 
 # ─── Argument parsing ────────────────────────────────────────────────────────
+SSH_PORT=""
 while [ "$#" -gt 0 ]; do
     case "$1" in
         -install)          INSTALL="$2";           shift 2 ;;
         -subdomain)        domain="$2";            shift 2 ;;
         -reality_domain)   reality_domain="$2";    shift 2 ;;
+        -ssh_port)         SSH_PORT="$2";          shift 2 ;;
         -ONLY_CF_IP_ALLOW) CFALLOW="$2";           shift 2 ;;
         -version)          PANEL_VERSION="$2";     shift 2 ;;
         -uninstall)        UNINSTALL="$2";         shift 2 ;;
@@ -1182,9 +1184,53 @@ setup_cron() {
 # ─────────────────────────────────────────────────────────────────────────────
 # FIREWALL
 # ─────────────────────────────────────────────────────────────────────────────
+valid_ssh_port() {
+    [[ "$1" =~ ^[0-9]{1,5}$ ]] && (( 10#$1 >= 1 && 10#$1 <= 65535 ))
+}
+
+detect_ssh_port() {
+    local port=""
+
+    if [[ -n "${SSH_CONNECTION:-}" ]]; then
+        port="${SSH_CONNECTION##* }"
+    fi
+    if ! valid_ssh_port "$port" && command -v sshd &>/dev/null; then
+        port=$(sshd -T 2>/dev/null | awk '$1 == "port" { print $2; exit }')
+    fi
+    if ! valid_ssh_port "$port" && command -v ss &>/dev/null; then
+        port=$(ss -ltnp 2>/dev/null | awk '/sshd/ { addr=$4; sub(/^.*:/, "", addr); print addr; exit }')
+    fi
+
+    if valid_ssh_port "$port"; then
+        echo "$((10#$port))"
+    else
+        echo "22"
+    fi
+}
+
 setup_firewall() {
+    local ssh_port="${SSH_PORT:-}"
+    local detected_port input
+
+    if [[ -z "$ssh_port" ]]; then
+        detected_port=$(detect_ssh_port)
+        if [[ -t 0 ]]; then
+            read -r -p "SSH port to allow through UFW [${detected_port}]: " input
+            ssh_port="${input:-${detected_port}}"
+        else
+            ssh_port="$detected_port"
+        fi
+    fi
+
+    if ! valid_ssh_port "$ssh_port"; then
+        msg_err "Invalid SSH port: ${ssh_port}. UFW was not changed."
+        exit 1
+    fi
+    ssh_port=$((10#$ssh_port))
+
+    msg_inf "UFW: allowing SSH on TCP port ${ssh_port}"
     ufw disable
-    ufw allow 22/tcp
+    ufw allow "${ssh_port}/tcp"
     ufw allow 80/tcp
     ufw allow 443/tcp
     ufw allow 443/udp

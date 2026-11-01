@@ -27,7 +27,7 @@ effect on servers only after push to `main`.
 ## What x-ui-latest.sh does
 
 1. Checks OS (Ubuntu 24.04/26.04, Debian 12/13) and rejects QEMU-emulated CPUs
-2. Parses CLI arguments (`-install n` to skip package install — default `y`, `-subdomain`, `-reality_domain`, `-auto_domain y`, `-version <ver>`, `-uninstall y`)
+2. Parses CLI arguments (`-install n` to skip package install — default `y`, `-subdomain`, `-reality_domain`, `-ssh_port`, `-auto_domain y`, `-version <ver>`, `-uninstall y`)
 3. Validates domains (panel ≠ REALITY), then stops/cleans any previous install
 4. Installs packages (`install_packages`) — nginx-full, certbot, sqlite3, ufw, mtr, python3 …
 5. Obtains Let's Encrypt certs via certbot standalone (`get_ssl_certs`) — panel + reality domains
@@ -56,7 +56,7 @@ effect on servers only after push to `main`.
 12. Tunes kernel/BBR (`tune_system`)
 13. Sets up cron (`setup_cron`) — daily x-ui restart + nginx reload; monthly certbot renew
     with pre/post hooks stopping/starting nginx (certs are standalone-issued)
-14. Configures UFW (`setup_firewall`) — 22/80/443 tcp, 443 udp
+14. Configures UFW (`setup_firewall`) — detects and confirms the SSH port, then allows SSH/80/443 tcp and 443 udp
 15. Prints panel URL + credentials (`show_results`)
 
 ## Speed test (LibreSpeed)
